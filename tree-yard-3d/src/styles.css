@@ -25,3 +25,6 @@ html,body{ height:100%; margin:0; font-family:Segoe UI, Roboto, Arial, sans-seri
 #legend{ font-size:12px; margin-top:6px; color:#333; }
 label{ font-size:13px; }
 input[type=range]{ vertical-align:middle; }
+
+/* style for the visual scale slider label to keep UI compact */
+#controls label { margin-left:8px; }

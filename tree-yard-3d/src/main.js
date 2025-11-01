@@ -1,12 +1,18 @@
 import * as THREE from 'https://unpkg.com/three@0.161.0/build/three.module.js';
-import { OrbitControls } from 'https://unpkg.com/three@0.161.0/examples/jsm/controls/OrbitControls.js';
-import { CSS2DRenderer, CSS2DObject } from 'https://unpkg.com/three@0.161.0/examples/jsm/renderers/CSS2DRenderer.js';
+// Use the ?module query so unpkg rewrites bare imports inside the examples modules
+import { OrbitControls } from 'https://unpkg.com/three@0.161.0/examples/jsm/controls/OrbitControls.js?module';
+import { CSS2DRenderer, CSS2DObject } from 'https://unpkg.com/three@0.161.0/examples/jsm/renderers/CSS2DRenderer.js?module';
 
 const container = document.getElementById('viewer');
 // No user file input - data is fetched from /data/heights.csv bundled in the repo
 const resetBtn = null;
 const spacingInput = document.getElementById('spacing');
 const tooltip = document.getElementById('tooltip');
+const instructionsEl = document.getElementById('instructions');
+
+function showInstruction(msg){
+  if(instructionsEl) instructionsEl.textContent = msg;
+}
 
 let scene, camera, renderer, controls, raycaster, pointer;
 let treesGroup = null;
@@ -16,6 +22,9 @@ const DATA_ROWS = 10;
 const COL_LETTERS = ['B','A','M','C'];
 
 let labelRenderer;
+// Visual exaggeration factor: multiply real heights (m) to make small trees more visible
+let VISUAL_SCALE = 5.0;
+const visualScaleInput = document.getElementById('visualScale');
 
 init();
 animate();
@@ -73,12 +82,18 @@ function init(){
   tabs.forEach(b => b.addEventListener('click', () => {
     const idx = parseInt(b.dataset.idx, 10) || 1;
     setActiveTab(idx);
-    loadDataset(idx).catch(err => console.error('Failed to load dataset', idx, err));
+    loadDataset(idx).catch(err => {
+      console.error('Failed to load dataset', idx, err);
+      showInstruction('Error loading dataset ' + idx + ': ' + (err && err.message ? err.message : String(err)));
+    });
   }));
 
   // Activate tab 1 by default
   setActiveTab(1);
-  loadDataset(1).catch(err => console.error('Failed to load default dataset:', err));
+  loadDataset(1).catch(err => {
+    console.error('Failed to load default dataset:', err);
+    showInstruction('Error loading dataset 1: ' + (err && err.message ? err.message : String(err)));
+  });
 }
 
 function setActiveTab(idx){
@@ -164,6 +179,10 @@ function resetScene(){
 }
 
 function buildTrees(flatHeightsCm){
+  // Remove any previous label DOM nodes to avoid stale labels accumulating
+  if(labelRenderer && labelRenderer.domElement){
+    try{ labelRenderer.domElement.innerHTML = ''; }catch(e){}
+  }
   if(treesGroup) { scene.remove(treesGroup); treesGroup = null; }
   treesGroup = new THREE.Group();
 
@@ -190,24 +209,31 @@ function buildTrees(flatHeightsCm){
       const z = (r - (rows-1)/2) * spacing;
 
       // trunk
-      const trunkHeight = Math.max(0.2, h * 0.4);
-      const trunkGeometry = new THREE.CylinderGeometry(0.12, 0.16, trunkHeight, 8);
+  // Apply visual scaling so small differences in 10-40cm are emphasized
+  const visualH = h * VISUAL_SCALE;
+  const trunkHeight = Math.max(0.05, visualH * 0.45);
+  const trunkRadiusTop = Math.max(0.03, 0.04 * Math.sqrt(visualH));
+  const trunkRadiusBottom = Math.max(0.04, 0.05 * Math.sqrt(visualH));
+  const trunkGeometry = new THREE.CylinderGeometry(trunkRadiusTop, trunkRadiusBottom, trunkHeight, 8);
       const trunkMaterial = new THREE.MeshStandardMaterial({ color: 0x8b5a2b });
-      const trunk = new THREE.Mesh(trunkGeometry, trunkMaterial);
-      trunk.position.set(x, trunkHeight/2, z);
+  const trunk = new THREE.Mesh(trunkGeometry, trunkMaterial);
+  // Position trunk relative to the tree group
+  trunk.position.set(0, trunkHeight/2, 0);
 
       // foliage (cone)
-      const foliageHeight = Math.max(0.5, h * 0.6);
-      const foliageGeometry = new THREE.ConeGeometry(Math.max(0.25, h*0.15), foliageHeight, 12);
+  const foliageHeight = Math.max(0.15, visualH * 0.9);
+  const foliageRadius = Math.max(0.12, visualH * 0.35);
+  const foliageGeometry = new THREE.ConeGeometry(foliageRadius, foliageHeight, 12);
       // color by height (green -> yellowish for tall)
       const t = (h - minH) / Math.max(1e-6, (maxH - minH));
       const color = new THREE.Color();
       color.setHSL(0.33 - 0.33 * t, 0.6, 0.35);
       const foliageMaterial = new THREE.MeshStandardMaterial({ color });
-      const foliage = new THREE.Mesh(foliageGeometry, foliageMaterial);
-      foliage.position.set(x, trunkHeight + foliageHeight/2, z);
+  const foliage = new THREE.Mesh(foliageGeometry, foliageMaterial);
+  // Position foliage relative to the tree group
+  foliage.position.set(0, trunkHeight + foliageHeight/2, 0);
 
-      const tree = new THREE.Group();
+  const tree = new THREE.Group();
       tree.add(trunk);
       tree.add(foliage);
       tree.userData = { height_m: h, index: i, row: r, col: c };
@@ -220,14 +246,29 @@ function buildTrees(flatHeightsCm){
       div.textContent = labelText;
       const labelObj = new CSS2DObject(div);
       // place label slightly above the foliage
-      labelObj.position.set(0, trunkHeight + foliageHeight + 0.1, 0);
+  // Position label just above foliage; include a small offset
+  labelObj.position.set(0, trunkHeight + foliageHeight + 0.08 * Math.max(1, visualH), 0);
       tree.add(labelObj);
+
+      // Move the whole tree group to its grid location
+      tree.position.set(x, 0, z);
 
       treesGroup.add(tree);
     }
   }
 
   scene.add(treesGroup);
+}
+
+// Listen for scale slider changes
+if(visualScaleInput){
+  visualScaleInput.addEventListener('input', (e) =>{
+    const v = parseFloat(e.target.value);
+    if(!isNaN(v)){
+      VISUAL_SCALE = v;
+      if(heightsData.length) buildTrees(heightsData);
+    }
+  });
 }
 
 function animate(){
