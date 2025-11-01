@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Tree Yard 3D — Heights Visualizer</title>
+  <link rel="stylesheet" href="src/styles.css">
+</head>
+<body>
+  <div id="ui">
+    <div id="controls">
+      <!-- Dataset tabs -->
+      <div id="tabs">
+        <button class="tab-btn" data-idx="1">Natural Fall 2025</button>
+        <button class="tab-btn" data-idx="2">Agricultural Spring 2025</button>
+        <button class="tab-btn" data-idx="3">Agricultural Fall 2025</button>
+      </div>
+      <label>Spacing <input id="spacing" type="range" min="1" max="6" step="0.5" value="2"></label>
+      <div id="legend">Legend: height (m)</div>
+    </div>
+    <div id="instructions">Choose a dataset tab. Data files are bundled under <code>/data/dataset1.xlsx</code> (or .csv). To update, replace the file in the repo and redeploy.</div>
+  </div>
+
+  <div id="viewer"></div>
+  <div id="tooltip" class="hidden"></div>
+
+  <!-- SheetJS (XLSX parser) to optionally parse bundled .xlsx files. Exposes global XLSX. -->
+  <script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
+  <!-- main app (module) -->
+  <script type="module" src="src/main.js"></script>
+</body>
+</html>

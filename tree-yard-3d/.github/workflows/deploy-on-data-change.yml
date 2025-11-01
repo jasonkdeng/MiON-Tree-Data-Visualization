@@ -1,0 +1,36 @@
+name: Deploy on dataset change
+
+on:
+  push:
+    paths:
+      - 'data/**'
+    branches:
+      - main
+      - master
+
+jobs:
+  deploy:
+    name: Deploy to Vercel
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+
+      - name: Install vercel CLI
+        run: npm install -g vercel@latest
+
+      - name: Deploy to Vercel
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          # Optional: set these if you want to force a specific project/org
+          # VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          # VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+        run: |
+          # Deploy the repository root to Vercel in production mode.
+          # --confirm prevents interactive prompts. The token must be stored in repository secrets as VERCEL_TOKEN.
+          npx vercel --prod --token "$VERCEL_TOKEN" --confirm
