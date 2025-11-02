@@ -57,9 +57,34 @@ function init(){
   dir.position.set(10, 20, 10);
   scene.add(dir);
 
-  // Ground grid
-  const grid = new THREE.GridHelper(200, 100, 0x888888, 0xcccccc);
-  scene.add(grid);
+  // Ground plane with grass-like appearance
+  const groundGeometry = new THREE.PlaneGeometry(200, 200, 100, 100);
+  
+  // Add vertex colors for a textured grass look
+  const colors = [];
+  const positionAttribute = groundGeometry.attributes.position;
+  const color = new THREE.Color();
+  
+  for (let i = 0; i < positionAttribute.count; i++) {
+    // Vary the green shades slightly for a more natural look
+    const variation = Math.random() * 0.15 + 0.85; // 0.85 to 1.0
+    color.setRGB(0.29 * variation, 0.49 * variation, 0.23 * variation);
+    colors.push(color.r, color.g, color.b);
+  }
+  
+  groundGeometry.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
+  
+  const groundMaterial = new THREE.MeshStandardMaterial({ 
+    roughness: 0.9,
+    metalness: 0.0,
+    side: THREE.DoubleSide,
+    vertexColors: true // use vertex colors for variation
+  });
+  const ground = new THREE.Mesh(groundGeometry, groundMaterial);
+  ground.rotation.x = -Math.PI / 2; // rotate to horizontal
+  ground.position.y = -0.1; // slightly below trees
+  ground.receiveShadow = true;
+  scene.add(ground);
 
   // CSS2D renderer for labels
   labelRenderer = new CSS2DRenderer();
