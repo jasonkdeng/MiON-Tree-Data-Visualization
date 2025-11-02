@@ -1,0 +1,9 @@
+{
+  "name": "tree-yard-3d",
+  "version": "1.0.0",
+  "description": "3D Tree Yard Visualization",
+  "scripts": {
+    "build": "echo 'No build needed - static files'",
+    "dev": "python -m http.server 8000"
+  }
+}
